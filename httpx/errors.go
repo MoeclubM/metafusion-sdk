@@ -28,8 +28,7 @@ const (
 	CodeInternal               = "internal_error"
 )
 
-// statusByCode 是码到状态码的唯一映射。拆分后曾漂移过一次：存储侧 401 用 unauthorized、
-// 其余用 authentication_required——同一语义两个码，客户端没法按码处理。
+// statusByCode 是规范机器码到状态码的唯一映射。
 var statusByCode = map[string]int{
 	CodeAuthenticationRequired: http.StatusUnauthorized,
 	CodeForbidden:              http.StatusForbidden,
@@ -42,23 +41,10 @@ var statusByCode = map[string]int{
 	CodeInternal:               http.StatusInternalServerError,
 }
 
-// legacyCodes 是拆分期并存的历史别名，Canonical 把它们收敛到统一码。
-var legacyCodes = map[string]string{
-	"unauthorized": CodeAuthenticationRequired,
-}
-
-// Canonical 返回码的规范形式（历史别名收敛）；未登记的码原样返回。
-func Canonical(code string) string {
-	if canonical, ok := legacyCodes[code]; ok {
-		return canonical
-	}
-	return code
-}
-
 // StatusFor 返回机器码对应的状态码。未知码按 400——与目录侧 respond 的默认分支一致：
 // 没登记过的码属于调用方漏登记，静默升级成 5xx 会把"参数错"报成"服务错"。
 func StatusFor(code string) int {
-	if status, ok := statusByCode[Canonical(code)]; ok {
+	if status, ok := statusByCode[code]; ok {
 		return status
 	}
 	return http.StatusBadRequest
@@ -72,11 +58,11 @@ type Error struct {
 }
 
 // New 按码构造错误，状态码由 StatusFor 推导。
-func New(code string) *Error { return &Error{Code: Canonical(code)} }
+func New(code string) *Error { return &Error{Code: code} }
 
 // NewStatus 构造带显式状态码的错误（码不在映射表里时用）。
 func NewStatus(status int, code string) *Error {
-	return &Error{Code: Canonical(code), Status: status}
+	return &Error{Code: code, Status: status}
 }
 
 func (e *Error) Error() string {
@@ -110,9 +96,9 @@ func WriteError(w http.ResponseWriter, err error) {
 	WriteCode(w, status, code)
 }
 
-// WriteCode 写出 {"error":"机器码"}；码先过 Canonical，避免历史别名继续扩散。
+// WriteCode 写出 {"error":"机器码"}；调用方须使用规范机器码。
 func WriteCode(w http.ResponseWriter, status int, code string) {
-	body, err := marshalJSON(map[string]string{"error": Canonical(code)})
+	body, err := marshalJSON(map[string]string{"error": code})
 	if err != nil {
 		status, body = http.StatusInternalServerError, emptyErrorBody
 	}

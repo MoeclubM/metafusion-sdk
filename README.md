@@ -1,8 +1,8 @@
 # metafusion-sdk — 协议层 SDK
 
 MetaFusion 各服务之间**共用的协议**：访问令牌的验签、权限码、HTTP 约定。
-它解决的是"同一件事在 2–5 个仓库里各写一份、靠注释要求逐字一致"的问题
-（证据见主仓库 `docs/architecture/decoupling-audit-2026-09.md` §3）。
+它提供稳定协议的复用入口。当前业务服务尚未统一依赖该模块，接入状态与条件见主仓库
+[服务解耦路线](https://github.com/MoeclubM/MetaFusion/blob/main/docs/architecture/service-decoupling-roadmap.md#3-协议层复用)。
 
 **只放协议，不放业务。** 这个仓库不 import 任何 web 框架，也**没有任何第三方依赖**：
 验签用标准库实现，因此引入它不会给各服务增加供应链面积。
@@ -25,7 +25,7 @@ MetaFusion 各服务之间**共用的协议**：访问令牌的验签、权限�
 | `{"error"}` 形状与状态码映射、分页口径、健康探针、服务标记头、request-id | 各服务的业务错误码（`invalid_term`、`hash_mismatch` 之类）、UI、日志后端、部署编排 |
 
 角色兜底（`permissions` 为空时按 `role` 放行）**故意不进 SDK**：容忍它就会把
-"角色兜底"变成绕过权限组的后门。各服务要保留兼容逻辑就自己写一层，并在自己的 README 里说明何时删除。
+"角色兜底"变成绕过权限组的后门。各服务必须以权限码判定访问。
 
 ## 用法
 
@@ -70,17 +70,17 @@ page := httpx.Default.ParseRequest(r) // 通用口径 50/100；长列表用 http
 
 语义与 `backend/internal/catalog/token.go`、`metafusion-community/internal/auth`、
 `metafusion-storage/internal/auth` 现有实现一致（字段名、10 分钟 JWKS TTL、未知 `kid` 强制刷新、
-`*` 通配、`limit` 越界静默收敛），但**这次不改任何服务**：三个服务的切换由主仓库审计文档的
-B2 批次执行。切换时要留意的行为差异：
+`*` 通配、`limit` 越界静默收敛）。业务服务当前仍使用自身实现；接入需按服务验证等价行为，
+现行认证契约见主仓库[拆分契约](https://github.com/MoeclubM/MetaFusion/blob/main/docs/architecture/service-split-migration.md#4-认证边界)。接入时需核对：
 
-| 差异 | 说明 |
+| 接入检查 | 当前约定 |
 | --- | --- |
-| 静态公钥不接受私钥 | 现有子系统实现会接受私钥并只取公钥部分；本 SDK 直接报错，避免"把签发私钥配给只验签的进程"继续发生（审计决议 D3）。改配 `openssl rsa -in key.pem -pubout` 的输出 |
+| 静态公钥不接受私钥 | SDK、目录、互动和存储的验签实现均拒绝私钥材料；签发私钥只属于账号服务 |
 | `aud` 支持字符串与数组 | 现有目录侧只接受单字符串，`aud` 为数组时会解析失败；本 SDK 两者都接受，且要求集合里含配置的 audience |
 | 缺少 `exp` 视为过期 | 与目录侧现有行为一致 |
 | 没有公钥来源时 `Unavailable()` 为真，`Verify` 直接返回 `ErrUnavailable` | fail closed：配置缺失不会变成"匿名可写"；调用方应在启动日志里告警 |
-| 历史错误码收敛 | `httpx.Canonical("unauthorized")` → `authentication_required`（存储侧现在的 401 码） |
-| `offset < 0` 收敛为 0 | 目录侧现在会把负数直接交给 SQL |
+| 规范错误码 | `httpx` 只登记规范机器码，未认证使用 `authentication_required`，不提供历史别名映射 |
+| `offset < 0` 收敛为 0 | SDK 与目录侧均在取数前把负数收敛为 0 |
 
 ## 版本与验证
 

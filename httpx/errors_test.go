@@ -34,28 +34,12 @@ func TestStatusFor(t *testing.T) {
 	}
 }
 
-func TestCanonicalMatchesStatusMapping(t *testing.T) {
-	// 历史别名必须走同一条状态码映射，否则"同一个错误两种状态码"会继续扩散。
-	if got := Canonical("unauthorized"); got != CodeAuthenticationRequired {
-		t.Fatalf("Canonical(unauthorized) = %q", got)
-	}
-	if StatusFor("unauthorized") != http.StatusUnauthorized {
-		t.Fatal("legacy code must map through Canonical")
-	}
-	if got := Canonical(CodeForbidden); got != CodeForbidden {
-		t.Fatalf("known code must pass through, got %q", got)
-	}
-	if got := Canonical("catalog.specific_code"); got != "catalog.specific_code" {
-		t.Fatalf("service-private code must pass through, got %q", got)
-	}
-}
-
 func TestErrorStatus(t *testing.T) {
 	if status, code := ErrorStatus(nil); status != http.StatusOK || code != "" {
 		t.Fatalf("nil error = (%d, %q), want (200, empty)", status, code)
 	}
-	if status, code := ErrorStatus(New("unauthorized")); status != http.StatusUnauthorized || code != CodeAuthenticationRequired {
-		t.Fatalf("New(unauthorized) = (%d, %q)", status, code)
+	if status, code := ErrorStatus(New(CodeAuthenticationRequired)); status != http.StatusUnauthorized || code != CodeAuthenticationRequired {
+		t.Fatalf("New(authentication_required) = (%d, %q)", status, code)
 	}
 	// %w 包裹后仍要还原状态码：目录侧曾因全等比较把 403 退化成 400。
 	wrapped := fmt.Errorf("attributes.x: %w", New(CodeVersionConflict))
@@ -76,7 +60,7 @@ func TestErrorStatus(t *testing.T) {
 }
 
 func TestErrorStringIsTheMachineCode(t *testing.T) {
-	if got := New("unauthorized").Error(); got != CodeAuthenticationRequired {
+	if got := New(CodeAuthenticationRequired).Error(); got != CodeAuthenticationRequired {
 		t.Fatalf("Error() = %q, want the canonical code", got)
 	}
 	// nil 接收者不能 panic：handler 里 err 变量为 nil 是常态。
@@ -87,7 +71,7 @@ func TestErrorStringIsTheMachineCode(t *testing.T) {
 
 func TestWriteCode(t *testing.T) {
 	rec := httptest.NewRecorder()
-	WriteCode(rec, http.StatusUnauthorized, "unauthorized")
+	WriteCode(rec, http.StatusUnauthorized, CodeAuthenticationRequired)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d", rec.Code)
 	}
