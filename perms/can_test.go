@@ -62,7 +62,7 @@ func TestValidCode(t *testing.T) {
 // 否则各服务引用的码会与账号服务下发的清单悄悄错开。
 func TestCodeListsAreFrozen(t *testing.T) {
 	wantAuth := []string{"auth.users.manage", "auth.groups.manage", "auth.invites.manage", "auth.settings.manage", "auth.oauth.manage"}
-	wantCatalog := []string{"catalog.entity.edit", "catalog.relation.edit", "catalog.definitions.manage", "catalog.lifecycle.manage", "catalog.import.submit", "catalog.shelves.manage"}
+	wantCatalog := []string{"catalog.entity.edit", "catalog.relation.edit", "catalog.definitions.manage", "catalog.lifecycle.manage", "catalog.shelves.manage"}
 	wantCommunity := []string{"community.post.create", "community.post.moderate", "community.topic.pin", "community.board.manage"}
 	wantStorage := []string{"storage.asset.upload", "storage.asset.moderate"}
 

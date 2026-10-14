@@ -14,7 +14,6 @@ const (
 	CatalogRelationEdit      = "catalog.relation.edit"
 	CatalogDefinitionsManage = "catalog.definitions.manage"
 	CatalogLifecycleManage   = "catalog.lifecycle.manage"
-	CatalogImportSubmit      = "catalog.import.submit"
 	CatalogShelvesManage     = "catalog.shelves.manage"
 )
 
@@ -44,7 +43,7 @@ const (
 // CatalogCodes 返回目录服务声明的全部码（角色兜底只认本服务的码，
 // 不会因为角色是 admin 就放行别的子系统的码）。
 func CatalogCodes() []string {
-	return []string{CatalogEntityEdit, CatalogRelationEdit, CatalogDefinitionsManage, CatalogLifecycleManage, CatalogImportSubmit, CatalogShelvesManage}
+	return []string{CatalogEntityEdit, CatalogRelationEdit, CatalogDefinitionsManage, CatalogLifecycleManage, CatalogShelvesManage}
 }
 
 // AuthCodes 返回账号服务声明的全部码。
@@ -65,7 +64,7 @@ func StorageCodes() []string {
 // AllCodes 返回全部已声明的码（不含 Wildcard）：账号服务的权限清单、
 // 管理台下拉与"某个码是否还有人认"的自检都用它，避免再手抄一遍。
 func AllCodes() []string {
-	out := make([]string, 0, 17)
+	out := make([]string, 0, 16)
 	out = append(out, AuthCodes()...)
 	out = append(out, CatalogCodes()...)
 	out = append(out, CommunityCodes()...)
